@@ -1,4 +1,7 @@
 name: Update Hugo Modules
+branding:
+  icon: arrow-up-circle
+  color: purple
 description: |
   Run `hugo mod get -u` against a project and return what updates were made, if any.
 inputs:
