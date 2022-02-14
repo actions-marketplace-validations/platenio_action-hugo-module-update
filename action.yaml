@@ -1,0 +1,43 @@
+name: hugo-module-update
+description: |
+  Run `hugo mod get -u` against a project and return what updates were made, if any.
+inputs:
+  recursive:
+    description: Whether or not to update the modules recursively
+    required: false
+    default: 'true'
+  no-install:
+    description: Specify to skip the hugo install step
+    required: false
+    default: 'false'
+outputs:
+  results:
+    description: |
+      The output returned from `hugo mod get -u` explaining what it did.
+    value: "${{ steps.update-hugo-modules.outputs.results }}"
+runs:
+  using: composite
+  steps:
+    - name: Setup Hugo
+      if: ${{ inputs.no-install != 'true' }}
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: 'latest'
+        extended: true
+    - name: Update Modules
+      id: update-hugo-modules
+      shell: pwsh
+      run: |
+        $UpdateArgument = ('${{ inputs.recursive }}' -eq 'true') ? './...' : ''
+        $UpdateLines = Invoke-Command { hugo mod get -u $UpdateArgument 2>&1 } |
+          ForEach-Object { $_.ToString() } |
+          Where-Object -FilterScript {
+            # Skip generic update line
+            $_.ToString() -notmatch '^Update module in'
+          }
+        If ($UpdateLines -match '(error|failed to execute)') {
+          Throw "Something went wrong!`r`n$UpdateLines"
+        } Else {
+          $UpdateLines = $UpdateLines -join "`r`n" | ConvertTo-Json
+        }
+        echo "::set-output name=results::$UpdateLines"
